@@ -163,12 +163,114 @@ function cleanCourseNumber(rawCourseNumber) {
  * @param {HTMLTableRowElement} row - The <tr> to read the subject code and course number from.
  * @return {string|null} The course ID, or `null` if none of the known sources were found.
  */
-// Learned "Subject Description" text (e.g. "Physics") -> subject code (e.g. "PHYS"), so that
-// a row with no button/link of its own carrying the code can still resolve the SAME course ID
-// as other rows of the same course that do. Without this, two rows of the same course could
-// silently resolve to two different courseID strings depending on which button/link happened
-// to be present, fracturing what should be one shared courseMap entry into two.
-const subjectCodeByDescription = new Map();
+// Georgia Tech's full subject list (description -> code), from the registrar's public course
+// catalog (catalog.gatech.edu/coursesaz/) — confirmed to match Banner's own "Subject
+// Description" text exactly for the subjects seen so far (e.g. "Physics", "Biomedical
+// Engineering"). Some of GT's registration pages (confirmed: "Register for Classes"/"Browse
+// Classes" searched by course number, without a subject) never render ANY element carrying the
+// subject's short code (e.g. "PHYS") anywhere in the row - only the full description. Without
+// this static table, Course Critique data could only ever be fetched on those pages by luck,
+// if a courseID had already been learned from some other page in the same browsing session
+// (see subjectCodeByDescription below) - e.g. only if "Plan Ahead" happened to be visited first
+// in the same tab, since that page's rows do carry the code directly.
+const SUBJECT_CODE_BY_DESCRIPTION = {
+    "Accounting": "ACCT",
+    "Aerospace Engineering": "AE",
+    "Air Force Aerospace Studies": "AS",
+    "Applied Physiology": "APPH",
+    "Applied Systems Engineering": "ASE",
+    "Arabic": "ARBC",
+    "Architecture": "ARCH",
+    "Arts, Entertainment, and Creative Technologies": "AECT",
+    "Biological Sciences": "BIOS",
+    "Biology": "BIOL",
+    "Biomed Engr/Joint Emory PKU": "BMEJ",
+    "Biomedical Engineering": "BMED",
+    "Biomedical Engr/Joint Emory": "BMEM",
+    "Building Construction": "BC",
+    "Center Enhancement-Teach/Learn": "CETL",
+    "Chemical & Biomolecular Engr": "CHBE",
+    "Chemistry": "CHEM",
+    "Chinese": "CHIN",
+    "City Planning": "CP",
+    "Civil and Environmental Engr": "CEE",
+    "College of Engineering": "COE",
+    "College of Lifetime Learning": "CLL",
+    "College of Sciences": "COS",
+    "Computational Mod, Sim, & Data": "CX",
+    "Computational Science & Engr": "CSE",
+    "Computer Science": "CS",
+    "Cooperative Work Assignment": "COOP",
+    "Cross Enrollment": "UCGA",
+    "Earth and Atmospheric Sciences": "EAS",
+    "Economics": "ECON",
+    "Elect & Comp Engr-Professional": "ECEP",
+    "Electrical & Computer Engr": "ECE",
+    "English": "ENGL",
+    "Foreign Studies": "FS",
+    "Free Elective": "FREE",
+    "French": "FREN",
+    "Georgia Tech": "GT",
+    "Georgia Tech Lorraine": "GTL",
+    "German": "GRMN",
+    "Global Media and Cultures": "GMC",
+    "Health Systems": "HS",
+    "Hebrew": "HEBW",
+    "Hindi": "HIN",
+    "History": "HIST",
+    "History, Technology & Society": "HTS",
+    "Humanities Elective": "HUM",
+    "Industrial Design": "ID",
+    "Industrial & Systems Engr": "ISYE",
+    "International Affairs": "INTA",
+    "International Logistics": "IL",
+    "Internship": "INTN",
+    "Intl Executive MBA": "IMBA",
+    "Ivan Allen College": "IAC",
+    "Japanese": "JAPN",
+    "Korean": "KOR",
+    "Latin": "LATN",
+    "Learning Support": "LS",
+    "Linguistics": "LING",
+    "Literature, Media & Comm": "LMC",
+    "Management": "MGT",
+    "Management of Technology": "MOT",
+    "Manufacturing Leadership": "MLDR",
+    "Materials Science & Engr": "MSE",
+    "Mathematics": "MATH",
+    "Mechanical Engineering": "ME",
+    "Medical Physics": "MP",
+    "Military Science & Leadership": "MSL",
+    "Modern Languages": "ML",
+    "Music": "MUSI",
+    "Naval Science": "NS",
+    "Neuroscience": "NEUR",
+    "Nuclear & Radiological Engr": "NRE",
+    "Persian": "PERS",
+    "Philosophy": "PHIL",
+    "Physics": "PHYS",
+    "Political Science": "POL",
+    "Polymer, Textile and Fiber Eng": "PTFE",
+    "Portuguese": "PORT",
+    "Psychology": "PSYC",
+    "Public Policy/Joint GSU PhD": "PUBJ",
+    "Public Policy": "PUBP",
+    "Russian": "RUSS",
+    "Science": "SCI",
+    "Serve Learn Sustain": "SLS",
+    "Social Science Elective": "SS",
+    "Sociology": "SOC",
+    "Spanish": "SPAN",
+    "Swahili": "SWAH",
+    "Vertically Integrated Project": "VIP",
+    "Wolof": "WOLO",
+};
+
+// "Subject Description" text (e.g. "Physics") -> subject code (e.g. "PHYS"), seeded with the
+// static table above and also added to at runtime (see `remember` in getCourseIDForRow) for any
+// subject a button/link on the page reveals directly - a cheap safety net in case GT adds a new
+// subject that isn't in the static list yet.
+const subjectCodeByDescription = new Map(Object.entries(SUBJECT_CODE_BY_DESCRIPTION));
 
 function getCourseIDForRow(row) {
     const courseNumberCell = row.querySelector('td[data-property="courseNumber"]');
@@ -665,7 +767,7 @@ function appendInstructorCritiqueData(ratingDiv, courseLabel, courseCritiqueData
 
     const instructorStats = courseCritiqueData?.byInstructor?.[professorName];
     if (!instructorStats) {
-        ratingDiv.appendChild(createSpan("No Course Critique data for this instructor.", "rmp-no-data"));
+        ratingDiv.appendChild(createSpan("No Course Critique data yet.", "rmp-no-data"));
         return;
     }
 
@@ -681,7 +783,7 @@ function appendInstructorCritiqueData(ratingDiv, courseLabel, courseCritiqueData
  * @return {HTMLAnchorElement} The created anchor element.
  */
 function createRMPLinkAnchor(RMPLink) {
-    return createExternalLinkAnchor(RMPLink, "RMP", "View on RateMyProfessors", "ext-link-rmp");
+    return createExternalLinkAnchor(RMPLink, "RMP", "View on RMP", "ext-link-rmp");
 }
 
 /**
@@ -698,7 +800,7 @@ function createRMPLinkAnchor(RMPLink) {
 function appendRatingContent(container, metrics) {
     // Handle cases where the professor page does not exist
     if (metrics === null) {
-        container.appendChild(createSpan("No Rate My Professor page found.", "rmp-no-data"));
+        container.appendChild(createSpan("No RMP page found.", "rmp-no-data"));
         return;
     }
 
@@ -941,22 +1043,43 @@ async function handleMutations() {
     hideCcTooltipIfAnchorDetached();
 
     const professorCells = document.querySelectorAll('td[data-property="instructor"]');
-    const courseRows = Array.from(document.querySelectorAll('td[data-property="courseTitle"]'))
-        .map((cell) => cell.closest('tr'))
-        .filter(Boolean);
+    const courseTitleCells = document.querySelectorAll('td[data-property="courseTitle"]');
+
+    // Any row with either cell needs its course's Course Critique data fetched - a
+    // section-results page (Instructor column, no course grouping - e.g. "Register for
+    // Classes"/"Browse Classes" searched by course number alone) needs it just as much as a
+    // course-level results page (Title column, no Instructor column - "Plan Ahead") does.
+    // Gating this fetch on only courseTitleCells (as an earlier version did) meant Course
+    // Critique data was never fetched at all when browsing straight to a section-results page -
+    // it only ever appeared there because courseMap persists across in-app navigation in this
+    // single-page app, so it incidentally already had the data if "Plan Ahead" happened to be
+    // visited first in the same tab.
+    const courseRows = new Set();
+    for (const cell of professorCells) {
+        const row = cell.closest('tr');
+        if (row) {
+            courseRows.add(row);
+        }
+    }
+    for (const cell of courseTitleCells) {
+        const row = cell.closest('tr');
+        if (row) {
+            courseRows.add(row);
+        }
+    }
 
     if (professorCells.length > 0) {
         await processProfessorTables(professorCells);
     }
-    if (courseRows.length > 0) {
+    if (courseRows.size > 0) {
         // Fetched before updateProfessorRatings() runs, so per-instructor Course Critique data
         // is available in courseMap by the time instructor cells render.
-        await processCourseRows(courseRows);
+        await processCourseRows(Array.from(courseRows));
     }
     if (professorCells.length > 0) {
         await updateProfessorRatings();
     }
-    if (courseRows.length > 0) {
+    if (courseTitleCells.length > 0) {
         updateCourseTitleCells();
     }
 }

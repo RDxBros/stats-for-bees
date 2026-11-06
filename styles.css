@@ -1,26 +1,37 @@
-/* Banner renders this results grid as a table with table-layout: fixed,
-   which locks every column's width (set on the header row) regardless of
-   what width/min-width is set on a body cell. Switching the table itself to
-   auto layout lets the browser recompute column widths from actual content,
-   so the Instructor column can actually grow to fit the badge instead of
-   just wrapping text inside a column that never resizes.
-   :has() is supported in Chrome 105+ (this extension is Chrome-only). */
-table:has(td[data-property="instructor"]) {
-    table-layout: auto !important;
-}
-
-/* Banner also sets a narrow inline width (and nowrap/ellipsis) directly on
-   the Instructor cells; override those too so the column's actual content
-   width (now that auto layout respects it) isn't re-capped by this cell.
-   !important is needed since Banner re-applies its own inline width/style
-   attributes on this element. */
+/* Banner renders this results grid as a table with table-layout: fixed, which keeps the WHOLE
+   TABLE within the viewport by giving every column a fixed share of its width (set on the
+   header row) and truncating/clipping overflow rather than letting any column grow.
+   An earlier version of this switched the table itself to table-layout: auto so the
+   Instructor column could grow wide enough for the RMP/GPA badge. That's a real regression:
+   auto layout applies to every column, not just this one, so columns like Meeting Times also
+   stopped truncating and grew to fit their full content - the table became wider than the
+   viewport, and reaching the Status/Add-course columns required scrolling right, which is a
+   core piece of functionality (you can't register for a class without it).
+   The fix below never touches table-layout. It only lets the Instructor cell's own content
+   wrap - which grows the ROW's height, not the column's width - so the badge fits without
+   being clipped, while every other column keeps Banner's original fixed width exactly as
+   before this extension existed. */
 td[data-property="instructor"] {
-    width: auto !important;
-    min-width: 180px !important;
     white-space: normal !important;
     overflow: visible !important;
     text-overflow: clip !important;
     vertical-align: top !important;
+}
+
+/* Unlike the table-layout: auto approach above, THIS stays within table-layout: fixed's own
+   model: each column's width is still just a fixed share of the table, so the table as a whole
+   still fits the viewport - we're only changing which share goes to which column. Borrowing
+   space from the "Attribute" column (e.g. "STEM USG" - rarely useful for comparing sections)
+   gives the Instructor column enough room to read its RMP/GPA badge comfortably. Targets both
+   th and td via the bare attribute selector, since table-layout: fixed derives column widths
+   from whichever row actually carries the width (header or first body row, depending on the
+   table), and Banner re-applies its own inline width on every row regardless. */
+[data-property="instructor"] {
+    width: 18% !important;
+}
+
+[data-property="attribute"] {
+    width: 5% !important;
 }
 
 /* Boxed container separating the injected rating badge from Banner's own

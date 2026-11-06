@@ -30,7 +30,7 @@ Download now at https://chromewebstore.google.com/detail/rate-my-professor-for-g
 * Clear fallback states for professors/courses without data
 
 ### Manual Installation (For Development)
-1. Clone this repository: `git clone https://github.com/RDxBros/rmp-cc-gatech-extension.git`
+1. Clone this repository: `git clone https://github.com/RDxBros/stats-for-bees.git`
 2. Open Chrome and navigate to `chrome://extensions/`
 3. Enable "Developer mode" using the toggle in the top-right corner
 4. Click "Load unpacked"
@@ -51,17 +51,13 @@ Download now at https://chromewebstore.google.com/detail/rate-my-professor-for-g
     * GPA (hover for that professor's grade distribution in this course)
     * Course Critique »
 5. Click "RMP »" to visit the professor's full Rate My Professors profile based on their most relevant department.
-6. If a professor doesn't have a Rate My Professors page, "No page found." is displayed instead. If they have a page but no ratings yet, "No ratings yet." is displayed. Course Critique data falls back to "No Course Critique data." the same way when none is found.
+6. If a professor doesn't have a Rate My Professors page, "No Rate My Professor page found." is displayed instead. If they have a page but no ratings yet, "No ratings yet." is displayed. Course Critique data falls back to "No Course Critique data." the same way when none is found.
 
 ## Configuration
 This extension currently operates without requiring any configuration. It automatically:
 * Detects professor names in the registration results table
 * Fetches and displays relevant metrics
 * Updates information as search results change
-
-## Browser Support
-* Chrome/Chromium-based browsers
-* Other browsers not currently supported
 
 ## Limitations
 * **Georgia Tech Registration Only:** This extension is specifically designed for Georgia Tech's registration system (registration.banner.gatech.edu). It will not work or function properly on other university websites or course registration platforms.
@@ -77,6 +73,6 @@ This extension currently operates without requiring any configuration. It automa
 * **Course Critique Data Dependence:** GPA and grade-distribution data depend entirely on what Course Critique has recorded. A course or instructor with no recorded sections will show "No Course Critique data."
 
 ## License
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 Due to the nature of the Rate My Professors and Course Critique APIs and the limited ways to access their data, the technical implementation of certain functionalities, such as querying Rate My Professors via GraphQL or aggregating Course Critique's per-section grade data, might share similarities with other projects that also utilize these APIs.
